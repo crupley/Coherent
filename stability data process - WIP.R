@@ -37,48 +37,74 @@ header <- read.csv(filename, nrows=3, header = FALSE)
 dataImport <- read.csv(filename, header = TRUE, skip=3)
 stabData <- dataImport$Measurement
 
+eTime <- seq(cp$collectionStartTime, by=cp$sampleIncrement, along.with=stabData)
+window <- (eTime >= cp$processingStartTime & eTime <= cp$processingStartTime + cp$hours * 60 * 60 / cp$sampleIncrement)
 
+##Output Parameter calculations
+#calculated on the full data set
+powerMeanF <- mean(stabData)
+powerSTDevF <- sd(stabData)
+RMSpowerDevF <- powerSTDevF / powerMeanF
+
+#calculated on the selected window
+powerMeanW <- mean(stabData[window])
+powerSTDevW <- sd(stabData[window])
+RMSpowerDevW <- powerSTDevW / powerMeanW
+
+fit <- lm(stabData ~ eTime)  #linear fit to full stability data
+
+#additional features to add
+#lowest RMS interval, 8 and 4 hours
 
 #Plotting
 
-# oldpar <- par()
+oldpar <- par()
 
 #Power vs. time plot
-oldpar <- par(mfrow=c(2,2))
-# eTime = seq(0, by=cp$sampleIncrement / 60 / 60, length.out=length(stabData)) #elapsed hours
-eTime <- seq(cp$collectionStartTime, by=cp$sampleIncrement, along.with=stabData)
+oldpar <- par(mfrow=c(3,2))
 plot(eTime, stabData, xlab="Time", ylab="Power, W", main="Power Stability, Full Data", sub=dataName)
+abline(fit, col="blue")
 
 #Power vs. time selected window
-window <- (eTime >= cp$processingStartTime & eTime <= cp$processingStartTime + cp$hours * 60 * 60 / cp$sampleIncrement)
 plot(eTime[window], stabData[window], xlab="Time", ylab="Power, W", main="Power Stability, Selection", sub=dataName)
-
+abline(h=powerMeanW, col="blue")
+abline(h=powerMeanW + powerSTDev, col="blue", lty="dashed")
+abline(h=powerMeanW - powerSTDev, col="blue", lty="dashed")
 
 #Power value density plot
 den <- density(stabData)
+plot(den, xlab="Power, W", main="Power Stability Density Function", sub=dataName)
+
+#Power value density plot, windowed
+den <- density(stabData[window])
 plot(den, xlab="Power, W", main="Power Stability Density Function", sub=dataName)
 
 #Q-Q plot
 qqnorm(stabData, sub=paste("Power Stability", dataName))
 qqline(stabData)
 
+#Q-Q plot, windowed
+qqnorm(stabData[window], sub=paste("Power Stability", dataName))
+qqline(stabData[window])
+
 par(oldpar)
 
-#Output Parameter calculations
-
-stabData=dataImport[,1][window]
-powerMean <- mean(stabData)
-powerSTDev <- sd(stabData)
-RMSpowerDev <- powerSTDev / powerMean
 
 
-duration <- length(eTime[window]) * cp$sampleIncrement #in seconds
+# Print results to console
+
+duration <- length(eTime) * cp$sampleIncrement #in seconds
 hours <- floor(duration/3600)
 minutes <- floor((duration - hours*3600)/60)
 durationStr <- if (minutes < 10) paste(hours,":0",minutes, sep="") else paste(hours,":",minutes, sep="")
 
 
-# Print results to console
+durationW <- length(eTime[window]) * cp$sampleIncrement #in seconds
+hours <- floor(durationW/3600)
+minutes <- floor((durationW - hours*3600)/60)
+durationStrW <- if (minutes < 10) paste(hours,":0",minutes, sep="") else paste(hours,":",minutes, sep="")
+
+
 
 #Attempt 1
 # sprintf("Mean = %2.2f W", powerMean)
@@ -94,8 +120,12 @@ durationStr <- if (minutes < 10) paste(hours,":0",minutes, sep="") else paste(ho
 
 #attempt 3
 x <- data.frame(Parameters=c("Mean", "Standard Deviation", "RMS", "Duration"), 
-                Values=c(paste(format(powerMean, digits=4), "W"), 
-                         paste(format(powerSTDev, digits=4), "W"), 
-                         paste(format(100*RMSpowerDev, digits=2),"%",sep=""), 
-                         durationStr))
+                "Full Data"=c(paste(format(powerMeanF, digits=4), "W"), 
+                         paste(format(powerSTDevF*1000, digits=4), "mW"), 
+                         paste(format(100*RMSpowerDevF, digits=2),"%",sep=""), 
+                         durationStr),
+                Windowed=c(paste(format(powerMeanW, digits=4), "W"), 
+                         paste(format(powerSTDevW*1000, digits=4), "mW"), 
+                         paste(format(100*RMSpowerDevW, digits=2),"%",sep=""), 
+                         durationStrW))
 print(x)
