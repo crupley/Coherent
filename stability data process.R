@@ -68,8 +68,8 @@ abline(fit, col="blue")
 #Power vs. time selected window
 plot(eTime[window], stabData[window], xlab="Time", ylab="Power, W", main="Power Stability, Selection", sub=dataName)
 abline(h=powerMeanW, col="blue")
-abline(h=powerMeanW + powerSTDev, col="blue", lty="dashed")
-abline(h=powerMeanW - powerSTDev, col="blue", lty="dashed")
+abline(h=powerMeanW + powerSTDevW, col="blue", lty="dashed")
+abline(h=powerMeanW - powerSTDevW, col="blue", lty="dashed")
 
 #Power value density plot
 den <- density(stabData)
